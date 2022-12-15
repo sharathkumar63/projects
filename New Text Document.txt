@@ -1,0 +1,459 @@
+Prg1.tcl
+set ns [new Simulator]
+set tracefile [open prog1.tr w]
+$ns trace-all $tracefile
+set namfile [open prog1.nam w]
+$ns namtrace-all $namfile
+set n0 [$ns node]
+set n1 [$ns node]
+set n2 [$ns node]
+$ns duplex-link $n0 $n1 100Mbps 10ms DropTail
+$ns queue-limit $n0 $n1 5
+$ns duplex-link $n1 $n2 100Mbps 10ms DropTail
+$ns queue-limit $n1 $n2 3
+$ns duplex-link-op $n0 $n1 orient right-down
+$ns duplex-link-op $n1 $n2 orient left-down
+set tcp [new Agent/TCP]
+set sink [new Agent/TCPSink]
+$ns attach-agent $n0 $tcp
+$ns attach-agent $n2 $sink
+$ns connect $tcp $sink
+$tcp set PacketSize_ 2500
+set ftp [new Application/FTP]
+$ftp attach-agent $tcp
+$ns at 0.5 "$ftp start"
+$ns at 2.0 "$ftp stop"
+$ns at 2.5 "Finish"
+proc Finish {} {
+global ns tracefile namfile
+$ns flush-trace
+close $tracefile
+close $namfile
+exec nam prog1.nam &
+exec echo “The number of packets dropped is” &
+ecec grep -c “^d” prog1.tr &
+exit 0
+}
+puts "simulation starts..."
+$ns run
+
+
+
+Program:
+set val(stop) 10.0;
+
+set ns [new Simulator]
+
+set tracefile [open prog2.tr w]
+$ns trace-all $tracefile
+
+set namfile [open prog2.nam w]
+$ns namtrace-all $namfile
+
+set n0 [$ns node]
+set n1 [$ns node]
+set n2 [$ns node]
+set n3 [$ns node]
+set n4 [$ns node]
+set n5 [$ns node]
+$ns color 1 red
+$ns color 2 blue
+
+$ns duplex-link $n0 $n1 100.0Mb 10ms DropTail
+$ns queue-limit $n0 $n1 4
+$ns duplex-link $n1 $n2 50.0Mb 10ms DropTail
+$ns queue-limit $n1 $n2 4
+$ns duplex-link $n2 $n3 1.0Mb 10ms DropTail
+$ns queue-limit $n2 $n3 5
+$ns duplex-link $n3 $n4 1.0Mb 10ms DropTail
+$ns duplex-link $n4 $n5 10.0Mb 10ms DropTail
+$ns duplex-link-op $n0 $n1 orient right
+$ns duplex-link-op $n1 $n2 orient right
+$ns duplex-link-op $n2 $n3 orient right-down
+$ns duplex-link-op $n3 $n4 orient left
+$ns duplex-link-op $n4 $n5 orient left
+
+Agent/Ping instproc recv {from rtt} {
+$self instvar node_
+puts "node [$node_ id] recived ping answer from \
+#$from with round-trip-time $rtt ms"
+}
+set p0 [new Agent/Ping]
+$ns attach-agent $n0 $p0
+$p0 set packetSize_ 50000
+$p0 set fid_ 1
+set p5 [new Agent/Ping]
+$ns attach-agent $n5 $p5
+$p5 set packetSize_ 50000
+$p5 set fid_ 2
+$ns connect $p0 $p5
+
+$ns at 0.1 "$p0 send"
+$ns at 0.2 "$p0 send"
+$ns at 0.3 "$p0 send"
+$ns at 0.4 "$p0 send"
+$ns at 0.5 "$p0 send"
+$ns at 0.6 "$p0 send"
+$ns at 0.7 "$p0 send"
+$ns at 0.9 "$p0 send"
+$ns at 1.0 "$p0 send"
+$ns at 0.1 "$p5 send"
+$ns at 0.2 "$p5 send"
+$ns at 0.3 "$p5 send"
+$ns at 0.4 "$p5 send"
+$ns at 0.5 "$p5 send"
+$ns at 0.6 "$p5 send"
+$ns at 0.7 "$p5 send"
+$ns at 0.9 "$p5 send"
+$ns at 1.0 "$p5 send"
+
+proc finish {} {
+global ns tracefile namfile
+$ns flush-trace
+close $tracefile
+close $namfile
+exec nam prog2.nam &
+exit 0
+}
+$ns at $val(stop) "$ns nam-end-wireless $val(stop)"
+$ns at $val(stop) "finish"
+$ns at $val(stop) "puts \"done\" ; $ns halt"
+$ns run
+
+
+
+
+
+
+
+
+Program:
+
+set val(stop) 10.0 ;
+
+set ns [new Simulator]
+
+set tracefile [open prog3.tr w]
+$ns trace-all $tracefile
+
+set namfile [open prog3.nam w]
+$ns namtrace-all $namfile
+
+set winfile0 [open WinFileReno w]
+set winfile1 [open WinFileNewReno w]
+$ns color 1 Red
+$ns color 2 Blue
+
+set n0 [$ns node]
+set n1 [$ns node]
+set n2 [$ns node]
+set n3 [$ns node]
+set n4 [$ns node]
+set n5 [$ns node]
+
+$ns duplex-link $n0 $n1 100.0Mb 10ms DropTail
+$ns queue-limit $n0 $n1 50
+$ns duplex-link-op $n0 $n1 color "blue"
+$ns duplex-link $n2 $n1 100.0Mb 10ms DropTail
+$ns queue-limit $n2 $n1 20
+$ns duplex-link-op $n2 $n1 color "green"
+$ns duplex-link $n1 $n3 100.0Mb 10ms DropTail
+$ns queue-limit $n1 $n3 50
+
+$ns duplex-link-op $n0 $n1 orient right-down
+$ns duplex-link-op $n2 $n1 orient right-up
+$ns duplex-link-op $n1 $n3 orient right
+
+set lan [$ns newLan "$n3 $n4 $n5" 1Mb 40ms LLQueue/DropTail Mac/802_3
+channel]
+
+proc PlotWindow {tcpSource file} {
+global ns
+set time 0.1
+set now [$ns now]
+set cwnd [$tcpSource set cwnd_]
+puts $file "$now+$time"
+$ns at [expr $now+$time] "PlotWindow $tcpSource $file"
+
+}
+
+set tcp0 [new Agent/TCP/Reno]
+$ns attach-agent $n0 $tcp0
+$tcp0 set window_ 8000
+$tcp0 set fid_ 1
+set sink1 [new Agent/TCPSink]
+$ns attach-agent $n4 $sink1
+$ns connect $tcp0 $sink1
+$tcp0 set packetSize_ 1500
+
+set tcp3 [new Agent/TCP/Reno]
+$ns attach-agent $n2 $tcp3
+$tcp3 set window_ 8000
+$tcp3 set fid_ 2
+set sink4 [new Agent/TCPSink]
+$ns attach-agent $n5 $sink4
+$ns connect $tcp3 $sink4
+$tcp3 set packetSize_ 1500
+
+set ftp0 [new Application/FTP]
+$ftp0 attach-agent $tcp0
+$ns at 0.1 "$ftp0 start"
+$ns at 0.1 "PlotWindow $tcp0 $winfile0"
+$ns at 100.0 "$ftp0 stop"
+set ftp1 [new Application/FTP]
+$ftp1 attach-agent $tcp3
+$ns at 0.1 "$ftp1 start"
+$ns at 0.1 "PlotWindow $tcp3 $winfile1"
+$ns at 100.0 "$ftp1 stop"
+
+proc finish {} {
+global ns tracefile namfile
+$ns flush-trace
+close $tracefile
+close $namfile
+exec nam prog3.nam &
+exec xgraph WinFileReno WinFileNewReno &
+exit 0
+}
+$ns at $val(stop) "$ns nam-end-wireless $val(stop)"
+$ns at $val(stop) "finish"
+$ns at $val(stop) "puts \"done\" ; $ns halt"
+$ns run
+
+
+
+
+Program:
+import java.util.Scanner;
+class crc{
+public static void main(String args[])
+{ int i,j,k;
+int[] r;
+int[] z;
+
+Scanner sc=new Scanner(System.in);
+System.out.print("enter no.of Data Bit:");
+int n=sc.nextInt();
+
+System.out.println("enter the no.of generator Bits:");
+
+int m=sc.nextInt();
+int[] d=new int[n+m];
+int[] g=new int[m];
+System.out.println("Enter the Data Bits");
+
+for(i=0;i<n;i++)
+d[i]=sc.nextInt();
+System.out.println("Enter the Generator Bits");
+
+for(j=0;j<m;j++)
+g[j]=sc.nextInt();
+for(i=0;i<m-1;i++)
+d[n+i]=0;
+r=new int[m+n];
+z=new int[m];
+for(i=0;i<m;i++)
+{ r[i]=d[i];
+z[i]=0;
+}
+for(i=0;i<n;i++)
+{
+k=0;
+int msb=r[i];
+for(j=i;j<m+i;j++)
+{
+if(msb==0)
+r[j]=xor(r[j],z[k]);
+else
+r[j]=xor(r[j],g[k]);
+k++;
+}
+r[m+i]=d[m+i];
+}
+
+System.out.print("the Code bit added : ");
+for(i=n;i<n+m-1;i++)
+{
+d[i]=r[i];
+System.out.print(d[i]);
+}
+
+System.out.println("the Code Data is : ");
+for(i=0;i<n+m-1;i++)
+System.out.print(d[i]);
+}
+public static int xor(int x,int y)
+{
+if(x==y)
+return(0);
+else
+return(1);
+}
+}
+
+
+
+
+
+
+CLIENT SIDE
+import java.net.*;
+import java.io.*;
+public class ContentClient
+{
+public static void main(String args[])throws IOException
+{
+Socket sock=new Socket("ip add",4000);
+System.out.println("enter the filename");
+Scanner sc=new Scanner(System.in);
+String fname=sc.nextLine();
+OutputStream ostream=sock.getOutputStream();
+PrintWriter pwriter=new PrintWriter(ostream,true);
+pwriter.println(fname);
+InputStream istream=sock.getInputStream();
+Scanner sc1=new Scanner(istream);
+String str;
+while(sc1.hasNext())
+{
+Sc1=sc.nextLine();
+System.out.println(str);
+}
+pwriter.close();
+sock.close();
+sc1.close();
+}}
+SERVER SIDE
+import java.net.*;
+import java.io.*;
+import java.net.ServerSocket;
+public class Server
+{public static void main(String args[])throws IOException,FileNotFoundException{
+ServerSocket serverSocket=new ServerSocket(4000);
+System.out.println("Server ready for connection");
+Socket sock=serverSocket.accept();
+System.out.println("connection was successfull");
+InputStream istream=sock.getInputStream();
+Scanner sc=new Scanner(System.in);
+String fname=sc.nextLine();
+Scanner sc1=new Scanner(new FileReader(fname));
+OutputStream ostream=sock.getOutputStream();
+PrintWriter pwriter=new PrintWriter(ostream,true);
+String str;
+while(sc1.hasNext())
+{
+Str=sc1.nextLine();
+pwriter.println(str);
+}
+System.out.println("file content sent successfully");
+sock.close();serverSocket.close();
+pwriter.close();sc.close();
+sc1.close();
+}}
+
+
+
+
+
+
+
+//CLIENT PROGRAM:
+import java.io.*;
+import java.net.*;
+class UDPClient{
+public static void main(String args[])throws Exception
+{
+BufferedReader inFromUser=new BufferedReader(new
+
+InputStreamReader(System.in));
+
+DatagramSocket clientSocket=new DatagramSocket();
+InetAddress IPAddress=InetAddress.getByName("localhost");
+byte[] sendData=new byte[1024];
+byte[] recvData=new byte[1024];
+System.out.println("Enter start to connect to server");
+String sentence=inFromUser.readLine();
+sendData=sentence.getBytes();
+DatagramPacket sendPacket=new
+
+DatagramPacket(sendData,sendData.length,IPAddress,9876);
+
+clientSocket.send(sendPacket);
+DatagramPacket recvPacket=new DatagramPacket(recvData,recvData.length);
+clientSocket.receive(recvPacket);
+String modifiedsentence=new String(recvPacket.getData());
+System.out.println("Message received :"+modifiedsentence);
+clientSocket.close();
+}
+}
+
+//SERVER PROGRAM:
+import java.io.*;
+import java.net.*;
+import java.util.Scanner;
+class UDPServer{
+public static void main(String args[])throws Exception
+{
+DatagramSocket serverSocket=new DatagramSocket(9876);
+System.out.println("Server started");
+byte[] sendData=new byte[1024];
+byte[] recvData=new byte[1024];
+DatagramPacket recvPacket=new
+
+DatagramPacket(recvData,recvData.length);
+serverSocket.receive(recvPacket);
+recvPacket.getData();
+InetAddress IPAddress=recvPacket.getAddress();
+int port=recvPacket.getPort();
+System.out.println("client connected");
+Scanner input=new Scanner(System.in);
+String msg=input.nextLine();
+sendData=msg.getBytes();
+DatagramPacket sendPacket=new
+
+DatagramPacket(sendData,sendData.length,IPAddress,port);
+
+serverSocket.send(sendPacket);
+System.exit(0);
+}
+}
+
+
+
+
+
+
+Program:
+import java.util.*;
+class pg12
+{
+public static void main(String args[])
+{
+Scanner sc=new Scanner(System.in);
+int i,size,nop,opr,temp=0;
+int[] datarate=new int[100];
+System.out.println("enter the bucket size");
+size=sc.nextInt();
+System.out.println("enter the number of packets");
+nop=sc.nextInt();
+System.out.println("enter the dara rate");
+for(i=0;i<nop;i++)
+datarate[i]=sc.nextInt();
+System.out.println("enter the output rate");
+opr=sc.nextInt();
+for(i=0;i<nop;i++)
+{
+if(datarate[i]>size)
+System.out.println("bucket overflow");
+else
+{
+temp=datarate[i];
+while(temp>opr)
+{
+System.out.println("packet transmission"+opr);
+temp=temp-opr;
+}
+System.out.println("packet transmission"+temp);
+}
+}
+}
+}
